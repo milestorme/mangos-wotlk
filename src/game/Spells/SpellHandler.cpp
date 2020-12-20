@@ -157,7 +157,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
     recvPacket >> targets.ReadForCaster(pUser);
 
     // some spell cast packet including more data (for projectiles)
-    targets.ReadAdditionalSpellData(recvPacket, cast_flags);
+    HandleClientCastFlags(recvPacket, cast_flags, targets);
 
     targets.Update(pUser);
 
@@ -315,6 +315,12 @@ void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recv_data)
         return;
     }
 
+    if (obj->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED)) // we should not allow use of a locked GO
+        return;
+
+    if (obj->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE))
+        return;
+
     // Never expect this opcode for non intractable GO's
     if (obj->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT))
     {
@@ -412,7 +418,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
 #endif
 
     // some spell cast packet including more data (for projectiles)
-    targets.ReadAdditionalSpellData(recvPacket, cast_flags);
+    HandleClientCastFlags(recvPacket, cast_flags, targets);
 
     // auto-selection buff level base at target level (in spellInfo)
     if (Unit* target = targets.getUnitTarget())
@@ -425,9 +431,33 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     if (HasMissingTargetFromClient(spellInfo))
         targets.setUnitTarget(mover->GetTarget());
 
+    if (_player->HasQueuedSpell())
+        return;
+
+    bool handled = false;
     Spell* spell = new Spell(mover, spellInfo, triggeredByAura ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE, mover->GetObjectGuid(), triggeredByAura ? triggeredByAura->GetSpellProto() : nullptr);
     spell->m_cast_count = cast_count;                       // set count of casts
-    spell->SpellStart(&targets, triggeredByAura);
+    if (!triggeredByAura && (mover->HasGCD(spellInfo) || !mover->IsSpellReady(*spellInfo)))
+    {
+        if (mover->HasGCDOrCooldownWithinMargin(*spellInfo))
+        {
+            handled = true;
+            _player->SetQueuedSpell(spell);
+            GetMessager().AddMessage([guid = mover->GetObjectGuid(), targets = targets](WorldSession* session) mutable
+            {
+                if (session->GetPlayer()) // in case of logout
+                {
+                    if (session->GetPlayer()->GetMover()->GetObjectGuid() == guid) // in case of mind control end
+                        session->GetPlayer()->CastQueuedSpell(targets);
+                    else
+                        session->GetPlayer()->ClearQueuedSpell();
+                }
+            });
+        }
+    }
+
+    if (!handled)
+        spell->SpellStart(&targets, triggeredByAura);
 }
 
 void WorldSession::HandleCancelCastOpcode(WorldPacket& recvPacket)
@@ -440,6 +470,9 @@ void WorldSession::HandleCancelCastOpcode(WorldPacket& recvPacket)
     // ignore for remote control state (for player case)
     Unit* mover = _player->GetMover();
     if (mover != _player && mover->GetTypeId() == TYPEID_PLAYER)
+        return;
+
+    if (!_player->IsClientControlled(_player))
         return;
 
     // FIXME: hack, ignore unexpected client cancel Deadly Throw cast
@@ -774,10 +807,76 @@ void WorldSession::HandleUpdateMissileTrajectory(WorldPacket& recv_data)
 
     if (moveFlag)
     {
-        MovementInfo movementInfo;                      // MovementInfo
+        uint32 opcode;
+        recv_data >> opcode;
+        if (opcode != MSG_MOVE_STOP)
+            return; // hacking attempt
+        recv_data.SetOpcode(Opcodes(opcode));
+        HandleMovementOpcodes(recv_data);
+    }
+}
 
-        recv_data >> Unused<uint32>();                  // >> MSG_MOVE_STOP
-        recv_data >> guid.ReadAsPacked();
-        recv_data >> movementInfo;
+void WorldSession::HandleOnMissileTrajectoryCollision(WorldPacket& recvPacket)
+{
+    DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "WORLD: CMSG_ON_MISSILE_TRAJECTORY_COLLISION");
+
+    ObjectGuid casterGuid;
+    uint32 spellId;
+    uint8 castCount;
+    float x, y, z;    // Position of missile hit
+
+    recvPacket >> casterGuid;
+    recvPacket >> spellId;
+    recvPacket >> castCount;
+    recvPacket >> x;
+    recvPacket >> y;
+    recvPacket >> z;
+
+    Unit* caster = ObjectAccessor::GetUnit(*_player, casterGuid);
+    if (!caster)
+        return;
+
+    Spell* spell = caster->FindCurrentSpellBySpellId(spellId);
+    if (!spell || !(spell->m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION))
+        return;
+
+    spell->m_targets.setDestination(x, y, z);
+
+    // we changed dest, recalculate flight time
+    spell->RecalculateDelayMomentForDest();
+
+    WorldPacket data(SMSG_NOTIFY_MISSILE_TRAJECTORY_COLLISION, 21);
+    data << uint64(casterGuid);
+    data << uint8(castCount);
+    data << float(x);
+    data << float(y);
+    data << float(z);
+    caster->SendMessageToSet(data, true);
+}
+
+void WorldSession::HandleClientCastFlags(WorldPacket& recv_data, uint8 castFlags, SpellCastTargets& targets)
+{
+    // some spell cast packet including more data (for projectiles?)
+    if (castFlags & 0x02)
+    {
+        // not sure about these two
+        float elevation, speed;
+        recv_data >> elevation;
+        recv_data >> speed;
+
+        targets.setElevation(elevation);
+        targets.setSpeed(speed);
+
+        uint8 hasMovementData;
+        recv_data >> hasMovementData;
+        if (hasMovementData)
+        {
+            uint32 opcode;
+            recv_data >> opcode;
+            if (opcode != MSG_MOVE_STOP)
+                return; // hacking attempt
+            recv_data.SetOpcode(Opcodes(opcode));
+            HandleMovementOpcodes(recv_data);
+        }
     }
 }

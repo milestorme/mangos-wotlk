@@ -24,6 +24,7 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (19873,'spell_destroy_egg'),
 (20038,'spell_explosion_razorgore'),
 (21651,'spell_opening_capping'),
+(23226,'spell_ritual_candle_aura'),
 (25684,'spell_summon_mana_fiends_moam'),
 (25937,'spell_viscidus_freeze'),
 (26009,'spell_cthun_periodic_rotate'),
@@ -32,15 +33,41 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (26137,'spell_cthun_rotate_trigger'),
 (26152,'spell_cthun_periodic_eye_trigger'),
 (26180,'spell_huhuran_wyvern_string'),
-(26398,'spell_cthun_hook_tentacle'),
+(26205,'spell_hook_tentacle_trigger'),
+(26217,'spell_cthun_tentacles_summon'),
+(26237,'spell_cthun_tentacles_summon'),
+(26332,'spell_cthun_mouth_tentacle'),
+(26398,'spell_cthun_tentacles_summon'),
 (26584,'spell_summon_toxic_slime'),
 (26591,'spell_teleport_image'),
 (26619,'spell_periodic_scarab_trigger'),
 (26686,'spell_aq_whirlwind'),
+(26767,'spell_cthun_tentacles_summon'),
+(26769,'spell_cthun_periodic_eye_trigger'),
 (28282,'spell_ashbringer_item');
 
 -- TBC
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(42144,'spell_horseman_create_water_bucket'),
+(42074,'spell_horseman_fire'),
+(43885,'spell_horseman_maniacal_laugh'),
+(43884,'spell_horseman_maniacal_laugh_delayed'),
+(43886,'spell_horseman_maniacal_laugh_delayed'),
+(42140,'spell_horseman_start_fire_periodic'),
+(42143,'spell_horseman_start_fire_target_test'),
+(43711,'spell_horseman_start_fire_target_test'),
+(42132,'spell_horseman_start_fire'),
+(42079,'spell_horseman_start_fire'),
+(43715,'spell_horseman_start_fire'),
+(42637,'spell_horseman_conflagrate_periodic'),
+(42638,'spell_horseman_conflagrate_target_test'),
+(42339,'spell_bucket_lands'),
+(42348,'spell_fire_extinguish'),
+(42151,'spell_all_fires_out_test'),
+(43321,'spell_human_child_laughter'),
+(43324,'spell_orc_child_laughter'),
+(43323,'spell_human_child_crying'),
+(42178,'spell_invisible_campfire_remove'),
 (32811,'spell_greater_invisibility_mob'),
 (29969,'spell_summon_blizzard'),
 (29970,'spell_dispel_blizzard'),
@@ -76,16 +103,19 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (34874,'spell_despawn_underbog_mushrooms'),
 (36374,'spell_summon_smoke_beacon'),
 (37591,'spell_inebriate_removal'),
+(35754,'spell_soccothrates_charge'),
+(38028,'spell_watery_grave'),
 (34231,'spell_increased_holy_light_healing'),
-(30926,'spell_vazruden_liquid_fire_script'),
 (33793,'spell_vazruden_liquid_fire_script'),
 (33794,'spell_vazruden_liquid_fire_script'),
-(34653,'spell_vazruden_liquid_fire_script'),
-(36920,'spell_vazruden_liquid_fire_script'),
+(30926,'spell_vazruden_liquid_fire_script'),
 (36921,'spell_vazruden_liquid_fire_script'),
 (30700,'spell_face_highest_threat'),
 (36153,'spell_soulbind'),
 (36460,'spell_ultra_deconsolodation_zapper'),
+(37431,'spell_lurker_spout_initial'),
+(37429,'spell_lurker_spout_turning'),
+(37430,'spell_lurker_spout_turning'),
 (37851,'spell_tag_for_single_use'),
 (33985,'spell_tag_for_single_use'),
 (37896,'spell_to_infinity_and_above'),
@@ -96,6 +126,14 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (40251,'spell_shadow_of_death'),
 (41289,'spell_ethereal_ring_signal_flare'),
 (41999,'spell_shadow_of_death_remove'),
+(38358,'spell_tidal_surge_caribdis'),
+(37676,'spell_insidious_whisper'),
+(37750,'spell_clear_consuming_madness'),
+(37640,'spell_leotheras_whirlwind_aura'),
+(37641,'spell_leotheras_whirlwind_proc'),
+(33572,'spell_gronn_lords_grasp'),
+(38511,'spell_vashj_persuasion'),
+(38573,'spell_spore_drop_effect'),
 (33040,'spell_wota_main_cast_and_jump'),
 (33049,'spell_wota_main_cast_and_jump'),
 (33045,'spell_wota_dot'),
@@ -104,17 +142,53 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (42783,'spell_wrath_of_the_astromancer'),
 (45043,'spell_power_circle'),
 (44006,'spell_teleport_self_akilzon'),
-(43681,'spell_inactive');
+(43681,'spell_inactive'),
+(35861,'spell_nether_vapor_summon'),
+(35862,'spell_nether_vapor_summon'),
+(35863,'spell_nether_vapor_summon'),
+(35864,'spell_nether_vapor_summon'),
+(35865,'spell_nether_vapor_summon_parent'),
+(45960,'spell_nether_vapor_lightning'),
+(34630,'spell_scrap_reaver_spell'),
+(34800,'spell_getting_sleepy_aura'),
+(43364,'spell_getting_sleepy_aura');
 
 -- Wotlk
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(42912,'spell_summon_banshee'),
+(43768,'spell_flying_machine_controls'),
+(43770,'spell_grappling_hook'),
+(43789,'spell_grappling_beam'),
 (47028,'spell_taunka_face_me'),
 (47431,'spell_capture_jormungar_spawn'),
 (47435,'spell_scrape_corrosive_spit'),
 (47447,'spell_corrosive_spit'),
 (48268,'spell_container_of_rats'),
 (48397,'spell_drop_off_villager'),
-(49099,'spell_army_of_the_dead');
+(48630,'spell_summon_gauntlet_mobs_periodic_aura'),
+(48642,'spell_launch_harpoon'),
+(49099,'spell_army_of_the_dead'),
+(51519,'spell_death_knight_initiate_visual'),
+(51769,'spell_emblazon_runeblade_aura'),
+(51770,'spell_emblazon_runeblade'),
+(51858,'spell_siphon_of_acherus'),
+(51859,'spell_siphon_of_acherus_aura'),
+(51904,'spell_summon_ghouls_scarlet_crusade'),
+(51973,'spell_siphon_of_acherus_credit'),
+(51976,'spell_siphon_of_acherus_credit'),
+(51979,'spell_siphon_of_acherus_credit'),
+(51981,'spell_siphon_of_acherus_credit'),
+(52479,'spell_gift_of_the_harvester'),
+(52519,'spell_ghoulplosion'),
+(52555,'spell_dispel_scarlet_ghoul_credit'),
+(52694,'spell_recall_eye_of_acherus'),
+(54148,'spell_ritual_of_the_sword'),
+(54205,'spell_svala_transforming'),
+(55931,'spell_conjure_flame_sphere'),
+(57082,'spell_crystal_spikes'),
+(57283,'spell_remove_mushroom_power'),
+(59275,'spell_summon_gauntlet_mobs_periodic_aura'),
+(73159,'spell_play_movie');
 
 -- Hunter
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
@@ -210,8 +284,11 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 (12576,'spell_arcane_concentration'),
 (12577,'spell_arcane_concentration');
 
+-- Shaman
+INSERT INTO spell_scripts(Id, ScriptName) VALUES
+(70811,'spell_item_shaman_t10_elemental_2p_bonus');
+
 -- Battleground and Outdoor PvP
--- Alterac Valley
 INSERT INTO spell_scripts(Id, ScriptName) VALUES
 -- Arathi basin
 (23936,'spell_battleground_banner_trigger'),
@@ -224,9 +301,28 @@ INSERT INTO spell_scripts(Id, ScriptName) VALUES
 -- Zangarmarsh
 (32433,'spell_outdoor_pvp_banner_trigger'),
 (32438,'spell_outdoor_pvp_banner_trigger'),
+-- Strand of the Ancients
+(52365,'spell_split_teleport_boat'),
+(52459,'spell_end_of_round'),
+(52528,'spell_split_teleport_boat'),
+(53464,'spell_split_teleport_boat'),
+(53465,'spell_split_teleport_boat'),
+-- Wintergrasp
+(56659,'spell_build_wintergrasp_vehicle'),
+(56662,'spell_build_wintergrasp_vehicle'),
+(56664,'spell_build_wintergrasp_vehicle'),
+(56666,'spell_build_wintergrasp_vehicle'),
+(56668,'spell_build_wintergrasp_vehicle'),
+(56670,'spell_build_wintergrasp_vehicle'),
+(58622,'spell_teleport_lake_wintergrasp'),
+(61409,'spell_build_wintergrasp_vehicle'),
 -- Isle of Conquest
 (35092,'spell_battleground_banner_trigger'),
 (65826,'spell_battleground_banner_trigger'),
 (65825,'spell_battleground_banner_trigger'),
+(66630,'spell_gunship_portal_click'),
+(66637,'spell_gunship_portal_click'),
 (66686,'spell_battleground_banner_trigger'),
-(66687,'spell_battleground_banner_trigger');
+(66687,'spell_battleground_banner_trigger'),
+(68077,'spell_repair_cannon_aura'),
+(68078,'spell_repair_cannon');

@@ -24,6 +24,7 @@
 #define __WORLDSESSION_H
 
 #include "Common.h"
+#include "Globals/Locales.h"
 #include "Globals/SharedDefines.h"
 #include "Entities/ObjectGuid.h"
 #include "AuctionHouse/AuctionHouseMgr.h"
@@ -34,6 +35,8 @@
 #include <deque>
 #include <mutex>
 #include <memory>
+
+#include <boost/circular_buffer.hpp>
 
 struct ItemPrototype;
 struct AuctionEntry;
@@ -56,6 +59,7 @@ class MovementInfo;
 class WorldSession;
 
 struct OpcodeHandler;
+class SpellCastTargets;
 
 enum AccountDataType
 {
@@ -202,9 +206,10 @@ enum TutorialDataState
 
 enum WorldSessionState
 {
-    WORLD_SESSION_STATE_CREATED     = 0,
-    WORLD_SESSION_STATE_READY       = 1,
-    WORLD_SESSION_STATE_OFFLINE     = 2
+    WORLD_SESSION_STATE_CREATED        = 0,
+    WORLD_SESSION_STATE_CHAR_SELECTION = 1,
+    WORLD_SESSION_STATE_READY          = 2,
+    WORLD_SESSION_STATE_OFFLINE        = 3
 };
 
 #define MAX_DECLINED_NAME_CASES 5
@@ -274,6 +279,8 @@ class WorldSession
 
         // Set this session have no attached socket but keep it alive for short period of time to permit a possible reconnection
         void SetOffline();
+        void SetOnline();
+        void SetInCharSelection();
 
         // Request set offline, close socket and put session offline
         bool RequestNewSocket(WorldSocket* socket);
@@ -353,7 +360,10 @@ class WorldSession
 
         void QueuePacket(std::unique_ptr<WorldPacket> new_packet);
 
-        bool Update(PacketFilter& updater);
+        void DeleteMovementPackets();
+
+        bool Update(uint32 diff);
+        void UpdateMap(uint32 diff);
 
         /// Handle the authentication waiting queue (to be completed)
         void SendAuthWaitQue(uint32 position) const;
@@ -465,6 +475,10 @@ class WorldSession
         void SetLatency(uint32 latency) { m_latency = latency; }
         void ResetClientTimeDelay() { m_clientTimeDelay = 0; }
         uint32 getDialogStatus(const Player* pPlayer, const Object* questgiver, uint32 defstatus) const;
+
+        // Thread safety
+        uint32 GetCurrentPlayerLevel() { return m_currentPlayerLevel; }
+        void SetCurrentPlayerLevel(uint32 level) { m_currentPlayerLevel = level; }
 
         // Misc
         void SendKnockBack(float angle, float horizontalSpeed, float verticalSpeed) const;
@@ -589,6 +603,7 @@ class WorldSession
         void HandleDismissControlledVehicle(WorldPacket& recvPacket);
         void HandleRequestVehicleExit(WorldPacket& recvPacket);
         void HandleRequestVehicleSwitchSeat(WorldPacket& recvPacket);
+        void HandleRequestVehicleNextSeat(WorldPacket& recvPacket);
         void HandleChangeSeatsOnControlledVehicle(WorldPacket& recvPacket);
         void HandleRideVehicleInteract(WorldPacket& recvPacket);
         void HandleEjectPassenger(WorldPacket& recvPacket);
@@ -823,6 +838,7 @@ class WorldSession
         void HandlePetCastSpellOpcode(WorldPacket& recvPacket);
         void HandlePetLearnTalent(WorldPacket& recvPacket);
         void HandleLearnPreviewTalentsPet(WorldPacket& recvPacket);
+        void HandleDismissCritter(WorldPacket& recvPacket);
 
         void HandleSetActionBarTogglesOpcode(WorldPacket& recv_data);
 
@@ -942,6 +958,8 @@ class WorldSession
         void HandleSpellClick(WorldPacket& recv_data);
         void HandleGetMirrorimageData(WorldPacket& recv_data);
         void HandleUpdateMissileTrajectory(WorldPacket& recv_data);
+        void HandleOnMissileTrajectoryCollision(WorldPacket& recv_data);
+        void HandleClientCastFlags(WorldPacket& recvPacket, uint8 castFlags, SpellCastTargets& targets);
         void HandleAlterAppearanceOpcode(WorldPacket& recv_data);
         void HandleRemoveGlyphOpcode(WorldPacket& recv_data);
         void HandleCharCustomizeOpcode(WorldPacket& recv_data);
@@ -953,6 +971,9 @@ class WorldSession
         void HandleReadyForAccountDataTimesOpcode(WorldPacket& recv_data);
         void HandleQueryQuestsCompletedOpcode(WorldPacket& recv_data);
         void HandleQuestPOIQueryOpcode(WorldPacket& recv_data);
+
+        // Movement
+        void SynchronizeMovement(MovementInfo& movementInfo);
 
         std::deque<uint32> GetOpcodeHistory();
 
@@ -973,6 +994,8 @@ class WorldSession
         void LogUnexpectedOpcode(WorldPacket const& packet, const char* reason) const;
         void LogUnprocessedTail(WorldPacket& packet) const;
 
+        void ProcessByteBufferException(WorldPacket const& packet);
+
         uint32 m_GUIDLow;                                   // set logged or recently logout player (while m_playerRecentlyLogout set)
         Player* _player;
         std::shared_ptr<WorldSocket> m_Socket;              // socket pointer is owned by the network thread which created it
@@ -984,6 +1007,7 @@ class WorldSession
         uint8 m_expansion;
 
         time_t _logoutTime;                                 // when logout will be processed after a logout request
+        time_t m_kickTime;
         bool m_playerSave;                                  // should we have to save the player after logout request
         bool m_inQueue;                                     // session wait in auth.queue
         bool m_playerLoading;                               // code processed in LoginPlayer
@@ -1003,10 +1027,23 @@ class WorldSession
 
         bool m_initialZoneUpdated = false;
 
+        boost::circular_buffer<std::pair<int64, uint32>> m_timeSyncClockDeltaQueue; // first member: clockDelta. Second member: latency of the packet exchange that was used to compute that clockDelta.
+        int64 m_timeSyncClockDelta;
+        void ComputeNewClockDelta();
+
+        std::map<uint32, uint32> m_pendingTimeSyncRequests; // key: counter. value: server time when packet with that counter was sent.
+        uint32 m_timeSyncNextCounter;
+        uint32 m_timeSyncTimer;
+
+        // Thread safety mechanisms
         std::mutex m_recvQueueLock;
+        std::mutex m_recvQueueMapLock;
         std::deque<std::unique_ptr<WorldPacket>> m_recvQueue;
+        std::deque<std::unique_ptr<WorldPacket>> m_recvQueueMap;
 
         Messager<WorldSession> m_messager;
+
+        std::atomic<uint32> m_currentPlayerLevel;
 };
 #endif
 /// @}

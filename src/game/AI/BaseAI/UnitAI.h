@@ -25,6 +25,7 @@
 #include "Dynamic/FactoryHolder.h"
 #include "Entities/ObjectGuid.h"
 #include "AI/BaseAI/AIDefines.h"
+#include <functional>
 
 class WorldObject;
 class GameObject;
@@ -67,6 +68,7 @@ enum CastFlags
     CAST_MAIN_SPELL             = 0x100,                    // Marks main spell
     CAST_PLAYER_ONLY            = 0x200,                    // Selects only player targets - substitution for EAI not having more params
     CAST_DISTANCE_YOURSELF      = 0x400,                    // If spell with this cast flag hits main aggro target, caster distances himself - EAI only
+    CAST_TARGET_CASTING         = 0x800,                    // Selects only player targets that are casting - EAI only
 };
 
 enum ReactStates
@@ -467,6 +469,7 @@ class UnitAI
 
     protected:
         virtual std::string GetAIName() { return "UnitAI"; }
+        void DespawnGuids(GuidVector& spawns); // despawns all creature guids and clears contents
 
         ///== Fields =======================================
 

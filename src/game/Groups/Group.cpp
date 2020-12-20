@@ -1286,7 +1286,7 @@ void Group::SetRaidDifficulty(Difficulty difficulty)
 {
     m_raidDifficulty = difficulty;
     if (!isBattleGroup())
-        CharacterDatabase.PExecute("UPDATE groups SET raiddifficulty = %u WHERE groupId='%u'", m_raidDifficulty, m_Id);
+        CharacterDatabase.PExecute("UPDATE `groups` SET raiddifficulty = %u WHERE groupId='%u'", m_raidDifficulty, m_Id);
 
     for (GroupReference* itr = GetFirstMember(); itr != nullptr; itr = itr->next())
     {
@@ -1526,7 +1526,12 @@ static void RewardGroupAtKill_helper(Player* pGroupGuy, Unit* pVictim, uint32 co
 {
     // honor can be in PvP and !PvP (racial leader) cases (for alive)
     if (pGroupGuy->IsAlive())
+    {
         pGroupGuy->RewardHonor(pVictim, count);
+        // Send player killcredit for quests with PlayerSlain
+        if (pVictim->GetTypeId() == TYPEID_PLAYER)
+            pGroupGuy->KilledPlayerCredit();
+    }
 
     // xp and reputation only in !PvP case
     if (!PvP)

@@ -23,6 +23,7 @@
 #include "BattleGroundIC.h"
 #include "Tools/Language.h"
 #include "Globals/ObjectMgr.h"
+#include "Entities/Transports.h"
 
 BattleGroundIC::BattleGroundIC() : m_hordeInnerGateGuid(ObjectGuid()), m_allianceInnerGate1Guid(ObjectGuid()), m_allianceInnerGate2Guid(ObjectGuid()), m_closeDoorTimer(0)
 {
@@ -618,6 +619,8 @@ void BattleGroundIC::HandleGameObjectCreate(GameObject* go)
         case BG_IC_GO_BANNER_QUARRY:
         case BG_IC_GO_BANNER_WORKSHOP:
         case BG_IC_GO_BANNER_REFINERY:
+        case BG_IC_GO_GUNSHIP_A:
+        case BG_IC_GO_GUNSHIP_H:
             m_goEntryGuidStore[go->GetEntry()] = go->GetObjectGuid();
             break;
     }
@@ -781,6 +784,12 @@ void BattleGroundIC::DoApplyObjectiveBenefits(IsleObjective nodeId, GameObject* 
                 if (GameObject* pAnim = GetBgMap()->GetGameObject(guid))
                     pAnim->UseDoorOrButton();
             }
+
+            // start the gunship
+            if (GenericTransport* gunship = GetBgMap()->GetTransport(ObjectGuid(HIGHGUID_MO_TRANSPORT, uint32(iocGunships[ownerIdx]))))
+                gunship->SetGoState(GO_STATE_ACTIVE);
+
+            // ToDo: spawn the ship captain and yell when starting the ship
             break;
         }
         case BG_IC_OBJECTIVE_REFINERY:
@@ -900,6 +909,11 @@ void BattleGroundIC::DoResetObjective(IsleObjective nodeId)
                 if (GameObject* anim = GetBgMap()->GetGameObject(guid))
                     anim->ResetDoorOrButton();
             }
+
+            // stop the gunship
+            if (GenericTransport* gunship = GetBgMap()->GetTransport(ObjectGuid(HIGHGUID_MO_TRANSPORT, uint32(iocGunships[ownerIdx]))))
+                gunship->SetGoState(GO_STATE_READY);
+
             break;
         }
         case BG_IC_OBJECTIVE_REFINERY:
@@ -1003,7 +1017,7 @@ void BattleGroundIC::Update(uint32 diff)
     }
 
     // resource timers
-    for (uint8 i = 0; i < BG_IC_MAX_OBJECTIVES; ++i)
+    for (uint8 i = 0; i < BG_IC_MAX_RESOURCE_NODES; ++i)
     {
         if (m_resourceTickTimer[i])
         {

@@ -25,6 +25,7 @@
 #include "Tools/Formulas.h"
 #include "Spells/SpellAuras.h"
 #include "Entities/Unit.h"
+#include "Entities/Transports.h"
 
 Pet::Pet(PetType type) :
     Creature(CREATURE_SUBTYPE_PET),
@@ -390,6 +391,17 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petentry /*= 0*/, uint32 petnumber
     SynchronizeLevelWithOwner();
 
     SavePetToDB(PET_SAVE_AS_CURRENT, owner);
+
+    if (owner)
+    {
+        SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(GetUInt32Value(UNIT_CREATED_BY_SPELL));
+        // Add infinity cooldown on db load
+        if (spellInfo && spellInfo->HasAttribute(SPELL_ATTR_DISABLED_WHILE_ACTIVE))
+            owner->AddCooldown(*spellInfo, nullptr, true);
+    }
+
+    if (GenericTransport* transport = owner->GetTransport())
+        transport->AddPetToTransport(owner, this);
     return true;
 }
 
@@ -808,6 +820,14 @@ void Pet::Unsummon(PetSaveMode mode, Unit* owner /*= nullptr*/)
             }
         }
 
+        if (p_owner)
+        {
+            SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(GetUInt32Value(UNIT_CREATED_BY_SPELL));
+            // Remove infinity cooldown
+            if (spellInfo && spellInfo->HasAttribute(SPELL_ATTR_DISABLED_WHILE_ACTIVE))
+                p_owner->AddCooldown(*spellInfo);
+        }
+
         // only if current pet in slot
         switch (getPetType())
         {
@@ -923,7 +943,7 @@ bool Pet::CreateBaseAtCreature(Creature* creature)
     if (CreatureFamilyEntry const* cFamily = sCreatureFamilyStore.LookupEntry(cInfo->Family))
         SetName(cFamily->Name[sWorld.GetDefaultDbcLocale()]);
     else
-        SetName(creature->GetNameForLocaleIdx(sObjectMgr.GetDBCLocaleIndex()));
+        SetName(creature->GetNameForLocaleIdx(sObjectMgr.GetDbc2StorageLocaleIndex()));
 
     SetByteValue(UNIT_FIELD_BYTES_0, 1, CLASS_WARRIOR);
     SetByteValue(UNIT_FIELD_BYTES_0, 2, GENDER_NONE);

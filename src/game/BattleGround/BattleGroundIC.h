@@ -120,17 +120,18 @@ enum ICCreatures
     BG_IC_NPC_GNOME_ENGINEER                = 13000,        // has emote state 69
     BG_IC_NPC_GOBLIN_ENGINEER               = 36162,        // this one is guesswork but most likely correct
 
-    // gunship creatures
+    // gunship creatures - spawned by DB directly on the transport
+    // ToDo: implement intro event for each faction. When Hangar is captured the captain of the ship spawns and yells near the ground teleporters
     BG_IC_NPC_HORDE_GUNSHIP_CAPTAIN         = 35003,
-    BG_IC_NPC_KORKORN_REAVER                = 36164,
-    BG_IC_NPC_GOBLIN_ENGINEERING_CREW       = 36162,
-    BG_IC_NPC_OGRIMS_HAMMER_ENGINEER        = 30753,
+    // BG_IC_NPC_KORKORN_REAVER             = 36164,
+    // BG_IC_NPC_GOBLIN_ENGINEERING_CREW    = 36162,
+    // BG_IC_NPC_OGRIMS_HAMMER_ENGINEER     = 30753,
 
     BG_IC_NPC_ALLIANCE_GUNSHIP_CAPTAIN      = 34960,
-    BG_IC_NPC_LEGION_MARINE                 = 36166,
-    BG_IC_NPC_LEGION_DECKHAND               = 36165,
-    BG_IC_NPC_NAVIGATOR_TAYLOR              = 36151,
-    BG_IC_NPC_NAVIGATOR_SARACEN             = 36152,
+    // BG_IC_NPC_LEGION_MARINE              = 36166,
+    // BG_IC_NPC_LEGION_DECKHAND            = 36165,
+    // BG_IC_NPC_NAVIGATOR_TAYLOR           = 36151,
+    // BG_IC_NPC_NAVIGATOR_SARACEN          = 36152,
 
     // triggers
     BG_IC_NPC_WORLD_TRIGGER                 = 22515,
@@ -166,8 +167,8 @@ enum ICObjects
     BG_IC_GO_GATE_FRONT_H                   = 195494,
 
     // gunships
-    BG_IC_GO_GUNSHIP_A                      = 195121,
-    BG_IC_GO_GUNSHIP_H                      = 195276,
+    BG_IC_GO_GUNSHIP_A                      = 195121,       // acts as map 641
+    BG_IC_GO_GUNSHIP_H                      = 195276,       // acts as map 642
 
     // keep gates - they open and close after battleground start
     BG_IC_GO_PORTCULLIS_GATE_A              = 195703,
@@ -183,16 +184,16 @@ enum ICObjects
     BG_IC_GO_PORTCULLIS_KEEP_H              = 195223,
 
     // portals to the gunship (on the ground)
-    BG_IC_GO_GUNSHIP_GROUND_PORTAL_A        = 195320,
-    BG_IC_GO_GUNSHIP_GROUND_PORTAL_H        = 195326,
+    BG_IC_GO_GUNSHIP_GROUND_PORTAL_A        = 195320,       // casts spell 66629 to teleport player to alliance gunship; uses unit target 34984
+    BG_IC_GO_GUNSHIP_GROUND_PORTAL_H        = 195326,       // casts spell 66638 to teleport player to horde ship; uses unit target 34984
 
     // gunship portals visual effects
     BG_IC_GO_GUNSHIP_PORTAL_EFFECTS_A       = 195705,
     BG_IC_GO_GUNSHIP_PORTAL_EFFECTS_H       = 195706,
 
     // gunship_portals on the ship
-    BG_IC_GO_GUNSHIP_AIR_PORTAL_1           = 195371,
-    BG_IC_GO_GUNSHIP_AIR_PORTAL_2           = 196413,
+    // BG_IC_GO_GUNSHIP_AIR_PORTAL_A        = 195371,       // casts spell 66899 in order to teleport players to the ground
+    // BG_IC_GO_GUNSHIP_AIR_PORTAL_H        = 196413,
 
     // seaforium bombs - faction allows click from the opposite team
     BG_IC_GO_HUGE_SEAFORIUM_BOMB_A          = 195332,
@@ -343,6 +344,9 @@ enum ICAreaTriggers
     BG_IC_AREATRIGGER_KEEP_ALLIANCE         = 5555,
     BG_IC_AREATRIGGER_KEEP_HORDE            = 5535,
 };
+
+// *** Battleground Gunships *** //
+const uint32 iocGunships[PVP_TEAM_COUNT] = { BG_IC_GO_GUNSHIP_A, BG_IC_GO_GUNSHIP_H };
 
 // *** Battleground factions *** //
 const uint32 iocTeamFactions[PVP_TEAM_COUNT] = { BG_IC_FACTION_ID_ALLIANCE, BG_IC_FACTION_ID_HORDE };
@@ -733,7 +737,6 @@ class BattleGroundIC : public BattleGround
 
         bool m_isKeepInvaded[PVP_TEAM_COUNT];
 
-        GuidList m_dummy[PVP_TEAM_COUNT];               // BIG NOTE: this is here because there is a memory overwrite
         GuidList m_hangarPortalsGuids[PVP_TEAM_COUNT];
         GuidList m_hangarAnimGuids[PVP_TEAM_COUNT];
         GuidList m_seaforiumBombsGuids[PVP_TEAM_COUNT];

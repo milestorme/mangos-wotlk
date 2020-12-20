@@ -42,6 +42,7 @@ EndContentData */
 #include "Entities/TemporarySpawn.h"
 #include "AI/ScriptDevAI/base/CombatAI.h"
 #include "Spells/Scripts/SpellScript.h"
+#include "Spells/SpellAuras.h"
 
 /*#####
 # mob_mature_netherwing_drake
@@ -924,7 +925,7 @@ struct mob_torlothAI : public CombatAI
         ++m_uiAnimationCount;
     }
 
-    void JustDied(Unit* killer) override
+    void JustDied(Unit* /*killer*/) override
     {
         if (Player* player = m_creature->GetMap()->GetPlayer(m_playerGuid))
         {
@@ -1800,7 +1801,7 @@ struct mob_shadowmoon_soulstealerAI : public ScriptedAI
 
     void Aggro(Unit* who) override
     {
-        m_cDeathwail = GetClosestCreatureWithEntry(m_creature, NPC_SHADOWLORD_DEATHWAIL, 175.0f);
+        m_cDeathwail = GetClosestCreatureWithEntry(m_creature, NPC_SHADOWLORD_DEATHWAIL, 200.0f);
         bool exitCombat = false;
 
         if (m_cDeathwail)
@@ -1841,23 +1842,30 @@ struct mob_shadowmoon_soulstealerAI : public ScriptedAI
 
     void UpdateAI(const uint32 /*uiDiff*/) override
     {
+        if (!m_cDeathwail)
+            return;
+
         if (!m_bSixtyTriggered)
         {
             if (m_creature->GetHealthPercent() <= 60.0f)
+            {
                 if (npc_shadowlord_deathwailAI* DeathwailAI = dynamic_cast<npc_shadowlord_deathwailAI*>(m_cDeathwail->AI()))
                 {
                     DeathwailAI->DoSummonWave(true);
                     m_bSixtyTriggered = true;
                 }
+            }
         }
         else if (!m_bTwentyTriggered)
         {
             if (m_creature->GetHealthPercent() <= 20.0f)
+            {
                 if (npc_shadowlord_deathwailAI* DeathwailAI = dynamic_cast<npc_shadowlord_deathwailAI*>(m_cDeathwail->AI()))
                 {
                     DeathwailAI->DoSummonWave(true);
                     m_bTwentyTriggered = true;
                 }
+            }
         }
     }
 };
@@ -5260,7 +5268,7 @@ UnitAI* GetAI_npc_bt_battle_sensor(Creature* pCreature)
     return new npc_bt_battle_sensor(pCreature);
 }
 
-struct TagGreaterFelfireDiemetradon : public SpellScript
+struct TagGreaterFelfireDiemetradon : public SpellScript, public AuraScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool strict) const override
     {
@@ -5275,6 +5283,12 @@ struct TagGreaterFelfireDiemetradon : public SpellScript
         Unit* target = spell->m_targets.getUnitTarget(); // no need to check for creature, done above
         if (target)
             static_cast<Creature*>(target)->RegisterHitBySpell(spell->m_spellInfo->Id);
+    }
+
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (apply)
+            static_cast<Creature*>(aura->GetTarget())->UnregisterHitBySpell(aura->GetSpellProto()->Id);
     }
 };
 
@@ -5423,5 +5437,5 @@ void AddSC_shadowmoon_valley()
     pNewScript->GetAI = &GetAI_npc_bt_battle_sensor;
     pNewScript->RegisterSelf();
 
-    RegisterSpellScript<TagGreaterFelfireDiemetradon>("spell_tag_for_single_use");
+    RegisterScript<TagGreaterFelfireDiemetradon>("spell_tag_for_single_use");
 }

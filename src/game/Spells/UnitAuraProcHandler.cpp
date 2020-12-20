@@ -491,11 +491,11 @@ void Unit::ProcDamageAndSpell(ProcSystemArguments&& data)
 
     if (data.attacker)
     {
-		// trigger weapon enchants for weapon based spells; exclude spells that stop attack, because may break CC
-		if (data.attacker->GetTypeId() == TYPEID_PLAYER && (data.procExtra & (PROC_EX_NORMAL_HIT | PROC_EX_CRITICAL_HIT)) != 0)
+        // trigger weapon enchants for weapon based spells; exclude spells that stop attack, because may break CC
+        if (data.attacker->GetTypeId() == TYPEID_PLAYER && (data.procExtra & (PROC_EX_NORMAL_HIT | PROC_EX_CRITICAL_HIT)) != 0)
             if ((data.procFlagsAttacker & PROC_FLAG_ON_DO_PERIODIC) == 0) // do not proc this on DOTs
-			    if (!data.procSpell || (data.procSpell->EquippedItemClass == ITEM_CLASS_WEAPON && !data.procSpell->HasAttribute(SPELL_ATTR_STOP_ATTACK_TARGET)))
-				    static_cast<Player*>(data.attacker)->CastItemCombatSpell(data.victim, data.attType, data.procSpell ? !IsNextMeleeSwingSpell(data.procSpell) : false);
+                if (!data.procSpell || (data.procSpell->EquippedItemClass == ITEM_CLASS_WEAPON && !data.procSpell->HasAttribute(SPELL_ATTR_STOP_ATTACK_TARGET)))
+                    static_cast<Player*>(data.attacker)->CastItemCombatSpell(data.victim, data.attType, data.procSpell ? !IsNextMeleeSwingSpell(data.procSpell) : false);
         data.attacker->m_spellProcsHappening = false;
 
         // Mark auras created during proccing as ready
@@ -755,7 +755,7 @@ bool Unit::IsTriggeredAtSpellProcEvent(ProcExecutionData& data, SpellAuraHolder*
 
     for (uint8 i = 0; i < MAX_EFFECT_INDEX; ++i)
         if (Aura* aura = holder->m_auras[i])
-            if (!aura->OnCheckProc())
+            if (!aura->OnCheckProc(data))
                 return false;
 
     return roll_chance_f(chance);
@@ -4285,8 +4285,8 @@ SpellAuraProcResult Unit::HandleOverrideClassScriptAuraProc(ProcExecutionData& d
             triggered_spell_id = 28750;                     // Blessing of the Claw
             break;
         case 5497:                                          // Improved Mana Gems (Serpent-Coil Braid)
-            triggered_spell_id = 37445;                     // Mana Surge
-            break;
+            CastSpell(pVictim, 37445, TRIGGERED_NONE); // Mana Surge                   
+            return SPELL_AURA_PROC_OK;
         case 5510:                                          // Flexibility - T4 Holy Priest bonus
             RemoveAurasDueToSpell(37565);
             return SPELL_AURA_PROC_OK;
@@ -4331,11 +4331,29 @@ SpellAuraProcResult Unit::HandleRaidProcFromChargeAuraProc(ProcExecutionData& da
     SpellEffectIndex effIdx = triggeredByAura->GetEffIndex();
     ObjectGuid caster_guid = triggeredByAura->GetCasterGuid();
 
-    // triggered spell - only one in TBC
-    uint32 triggeredSpellId = 43594;
-    uint32 animationSpellId = 43613;
+    uint32 triggeredSpellId = 0;
+    uint32 animationSpellId = 0;
 
-    if (data.procSpell->Id == triggeredSpellId)
+    switch (spellProto->Id)
+    {
+        case 43593:
+            triggeredSpellId = 43594;
+            animationSpellId = 43613;
+            break;
+        case 57949:
+            triggeredSpellId = 57952;
+            animationSpellId = 57951;
+            break;
+        case 59978:
+            triggeredSpellId = 59979;
+            animationSpellId = 57951;
+            break;
+    }
+
+    if (!triggeredSpellId || !animationSpellId)
+        return SPELL_AURA_PROC_FAILED;
+
+    if (data.procSpell && data.procSpell->Id == triggeredSpellId)
         return SPELL_AURA_PROC_FAILED;
 
     int32 jumps = triggeredByAura->GetHolder()->GetAuraCharges() - 1; // jumps

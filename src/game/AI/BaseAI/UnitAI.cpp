@@ -254,7 +254,7 @@ void UnitAI::SetCombatMovement(bool enable, bool stopOrStartMovement /*=false*/)
             if (enable)
                 DoStartMovement(m_unit->GetVictim());
             else if (m_unit->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
-                m_unit->StopMoving();
+                m_unit->InterruptMoving();
         }
     }
 }
@@ -279,7 +279,7 @@ void UnitAI::HandleMovementOnAttackStart(Unit* victim) const
         else if (creatureMotion->GetCurrentMovementGeneratorType() == WAYPOINT_MOTION_TYPE || creatureMotion->GetCurrentMovementGeneratorType() == RANDOM_MOTION_TYPE)
         {
             creatureMotion->MoveIdle();
-            m_unit->StopMoving();
+            m_unit->InterruptMoving();
         }
     }
 }
@@ -296,19 +296,24 @@ void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject*
     // Creature should always stop before it will cast a non-instant spell
     if (state)
         if ((spell->GetCastTime() && spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_MOVEMENT) || (IsChanneledSpell(spellInfo) && spellInfo->ChannelInterruptFlags & CHANNEL_FLAG_MOVEMENT))
-            m_unit->StopMoving();
+            m_unit->InterruptMoving();
 
     bool forceTarget = false;
 
-    // Targeting seems to be directly affected by eff index 0 targets, client does the same thing
-    switch (spellInfo->EffectImplicitTargetA[EFFECT_INDEX_0])
+    // Targeting seems to be directly affected by eff index 0 targets, client does the same thing (spell id 38523 exception)
+    for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
     {
-        case TARGET_ENUM_UNITS_ENEMY_IN_CONE_24: // ignores everything and keeps turning
-            return;
-        case TARGET_UNIT_FRIEND:
-        case TARGET_UNIT_ENEMY: forceTarget = true; break;
-        case TARGET_UNIT_SCRIPT_NEAR_CASTER:
-        default: break;
+        switch (spellInfo->EffectImplicitTargetA[EFFECT_INDEX_0])
+        {
+            case TARGET_ENUM_UNITS_ENEMY_IN_CONE_24: // ignores everything and keeps turning
+                return;
+            case TARGET_UNIT_FRIEND:
+            case TARGET_UNIT_ENEMY: forceTarget = true; break;
+            case TARGET_UNIT_SCRIPT_NEAR_CASTER:
+            default: break;
+        }
+        if (forceTarget)
+            break;
     }
 
     if (state)
@@ -538,7 +543,7 @@ void UnitAI::SendAIEventAround(AIEventType eventType, Unit* invoker, uint32 dela
         CreatureList receiverList;
 
         // Allow sending custom AI events to all units in range
-        if (eventType >= AI_EVENT_CUSTOM_EVENTAI_A && eventType <= AI_EVENT_CUSTOM_EVENTAI_F && eventType != AI_EVENT_GOT_CCED || eventType > AI_EVENT_START_ESCORT)
+        if ((eventType >= AI_EVENT_CUSTOM_EVENTAI_A && eventType <= AI_EVENT_CUSTOM_EVENTAI_F && eventType != AI_EVENT_GOT_CCED) || eventType > AI_EVENT_START_ESCORT)
         {
             MaNGOS::AnyUnitInObjectRangeCheck u_check(m_unit, radius);
             MaNGOS::CreatureListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> searcher(receiverList, u_check);
@@ -716,4 +721,12 @@ void UnitAI::ClearSelfRoot()
         m_unit->SetImmobilizedState(false);
         m_selfRooted = false;
     }
+}
+
+void UnitAI::DespawnGuids(GuidVector& spawns)
+{
+    for (ObjectGuid& guid : spawns)
+        if (Creature* spawn = m_unit->GetMap()->GetAnyTypeCreature(guid))
+            spawn->ForcedDespawn();
+    spawns.clear();
 }

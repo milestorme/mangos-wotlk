@@ -43,6 +43,7 @@
 #include "Server/SQLStorages.h"
 #include "Movement/MoveSplineInit.h"
 #include "Maps/MapManager.h"
+#include "Entities/Transports.h"
 
 void ObjectMgr::LoadVehicleAccessory()
 {
@@ -192,7 +193,7 @@ void VehicleInfo::Board(Unit* passenger, uint8 seat)
 
     // Use the planned seat only if the seat is valid, possible to choose and empty
     if (!IsSeatAvailableFor(passenger, seat))
-        if (!GetUsableSeatFor(passenger, seat))
+        if (!GetUsableSeatFor(passenger, seat, true, true))
             return;
 
     VehicleSeatEntry const* seatEntry = GetSeatEntry(seat);
@@ -251,6 +252,18 @@ void VehicleInfo::Board(Unit* passenger, uint8 seat)
     ApplySeatMods(passenger, seatEntry->m_flags);
 }
 
+void VehicleInfo::ChangeSeat(Unit* passenger, uint8 currentSeat, bool next)
+{
+    // Switching seats is not possible
+    if (m_vehicleEntry->m_flags & VEHICLE_FLAG_DISABLE_SWITCH)
+        return;
+
+    if (!GetUsableSeatFor(passenger, currentSeat, false, next))
+        return;
+
+    SwitchSeat(passenger, currentSeat);
+}
+
 /**
  * This function will switch the seat of a passenger on the same vehicle
  *
@@ -282,7 +295,7 @@ void VehicleInfo::SwitchSeat(Unit* passenger, uint8 seat)
     MANGOS_ASSERT(seatEntry);
 
     // Switching seats is only allowed if this flag is set
-    if (~seatEntry->m_flags & SEAT_FLAG_CAN_SWITCH)
+    if (seatEntry->CanSwitchFromSeat())
         return;
 
     // Remove passenger modifications of the old seat
@@ -333,9 +346,14 @@ void VehicleInfo::UnBoard(Unit* passenger, bool changeVehicle)
 
     if (!changeVehicle)                                     // Send expected unboarding packages
     {
-        // Update movementInfo
-        passenger->m_movementInfo.RemoveMovementFlag(MOVEFLAG_ONTRANSPORT);
-        passenger->m_movementInfo.ClearTransportData();
+        if (GenericTransport* transport = m_owner->GetTransport())
+            transport->AddPassenger(passenger);
+        else
+        {
+            // Update movementInfo
+            passenger->m_movementInfo.RemoveMovementFlag(MOVEFLAG_ONTRANSPORT);
+            passenger->m_movementInfo.ClearTransportData();
+        }
 
         if (passenger->GetTypeId() == TYPEID_PLAYER)
         {
@@ -351,7 +369,8 @@ void VehicleInfo::UnBoard(Unit* passenger, bool changeVehicle)
 
         Movement::MoveSplineInit init(*passenger);
         // ToDo: Set proper unboard coordinates
-        init.MoveTo(m_owner->GetPositionX(), m_owner->GetPositionY(), m_owner->GetPositionZ());
+        Position pos = m_owner->GetPosition(m_owner->GetTransport());
+        init.MoveTo(pos.x, pos.y, pos.z);
         init.SetExitVehicle();
         init.Launch();
 
@@ -368,6 +387,10 @@ void VehicleInfo::UnBoard(Unit* passenger, bool changeVehicle)
     // Some creature vehicles get despawned after passenger unboarding
     if (m_owner->GetTypeId() == TYPEID_UNIT)
     {
+        // only for flyable vehicles
+        if (passenger->IsFlying())
+            static_cast<Unit*>(m_owner)->CastSpell(passenger, SPELL_VEHICLE_PARACHUTE, TRIGGERED_OLD_TRIGGERED);
+
         // TODO: Guesswork, but seems to be fairly near correct
         // Only if the passenger was on control seat? Also depending on some flags
         if ((seatEntry->m_flags & SEAT_FLAG_CAN_CONTROL) &&
@@ -461,7 +484,7 @@ VehicleSeatEntry const* VehicleInfo::GetSeatEntry(uint8 seat) const
  * @param seat              will contain an available seat if returned true
  * @return                  return TRUE if and only if an available seat was found. In this case @seat will contain the id
  */
-bool VehicleInfo::GetUsableSeatFor(Unit* passenger, uint8& seat) const
+bool VehicleInfo::GetUsableSeatFor(Unit* passenger, uint8& seat, bool reset, bool next) const
 {
     MANGOS_ASSERT(passenger);
 
@@ -472,11 +495,21 @@ bool VehicleInfo::GetUsableSeatFor(Unit* passenger, uint8& seat) const
         return false;
 
     // Start with 0
-    seat = 0;
+    if (reset)
+        seat = 0;
 
-    for (uint8 i = 1; seat < MAX_VEHICLE_SEAT; i <<= 1, ++seat)
-        if (possibleSeats & i)
-            return true;
+    if (next)
+    {
+        for (uint32 i = 0; i < MAX_VEHICLE_SEAT; ++i, seat = (seat + 1) % MAX_VEHICLE_SEAT)
+            if (possibleSeats & (1 << (seat + 1)))
+                return true;
+    }
+    else
+    {
+        for (uint32 i = 0; i < MAX_VEHICLE_SEAT; ++i, seat = (seat + MAX_VEHICLE_SEAT - 1) % MAX_VEHICLE_SEAT)
+            if (possibleSeats & (1 << (seat + 1)))
+                return true;
+    }
 
     return false;
 }

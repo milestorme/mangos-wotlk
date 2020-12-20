@@ -2031,7 +2031,7 @@ struct npc_nether_rayAI : public CombatAI
     npc_nether_rayAI(Creature* creature) : CombatAI(creature, RAY_ACTION_MAX)
     {
         AddCombatAction(RAY_ACTION_DRAIN_MANA, 2000u);
-        AddCombatAction(RAY_ACTION_TAIL_STING, 2000u);
+        AddCombatAction(RAY_ACTION_TAIL_STING, 9000, 11000);
         AddCombatAction(RAY_ACTION_NETHER_SHOCK, 0u);
     }
 
@@ -2040,7 +2040,7 @@ struct npc_nether_rayAI : public CombatAI
         switch (id)
         {
             case RAY_ACTION_DRAIN_MANA: return urand(10000, 15000);
-            case RAY_ACTION_TAIL_STING: return 23000;
+            case RAY_ACTION_TAIL_STING: return urand(16000, 17000);
             case RAY_ACTION_NETHER_SHOCK: return 5000;
             default: return 0;
         }
@@ -2077,18 +2077,11 @@ struct npc_nether_rayAI : public CombatAI
                 DoCastSpellIfCan(m_creature->GetVictim(), SPELL_TAIL_STING);
                 return;
             case RAY_ACTION_NETHER_SHOCK:
-                if (!m_creature->GetVictim())
-                    return;
                 DoCastSpellIfCan(m_creature->GetVictim(), SPELL_NETHER_SHOCK);
                 return;
         }
     }
 };
-
-UnitAI* GetAI_npc_nether_ray(Creature* creature)
-{
-    return new npc_nether_rayAI(creature);
-}
 
 /*######
 ## npc_mage_mirror_image
@@ -2397,7 +2390,7 @@ struct mob_phoenix_tkAI : public ScriptedAI
 
     void Aggro(Unit* /*pWho*/) override
     {
-        DoCastSpellIfCan(nullptr, m_burnSpellId);
+        DoCastSpellIfCan(nullptr, m_burnSpellId, CAST_TRIGGERED);
     }
 
     void JustPreventedDeath(Unit* /*attacker*/) override
@@ -2450,7 +2443,7 @@ struct mob_phoenix_tkAI : public ScriptedAI
         }
     }
 
-    void SpellHit(Unit* /*caster*/, const SpellEntry* spellInfo) override
+    void OnSpellCooldownAdded(SpellEntry const* spellInfo) override
     {
         if (spellInfo->Id == m_rebirthRespawnSpellId)
         {
@@ -2602,7 +2595,7 @@ void AddSC_npcs_special()
 
     pNewScript = new Script;
     pNewScript->Name = "npc_nether_ray";
-    pNewScript->GetAI = &GetAI_npc_nether_ray;
+    pNewScript->GetAI = &GetNewAIInstance<npc_nether_rayAI>;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;

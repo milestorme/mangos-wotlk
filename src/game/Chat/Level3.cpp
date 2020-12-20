@@ -2880,7 +2880,7 @@ bool ChatHandler::HandleLookupSpellCommand(char* args)
         SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(id);
         if (spellInfo)
         {
-            int loc = int(LOCALE_enUS);
+            int loc = int(DEFAULT_LOCALE);
             std::string name = spellInfo->SpellName[loc];
             if (name.empty())
                 continue;
@@ -5140,6 +5140,11 @@ bool ChatHandler::HandleQuestCompleteCommand(char* args)
         }
     }
 
+    // player kills
+    if (pQuest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_PLAYER_KILL))
+        if (uint32 reqPlayers = pQuest->GetPlayersSlain())
+            player->KilledPlayerCreditForQuest(reqPlayers, pQuest);
+
     // If the quest requires reputation to complete
     if (uint32 repFaction = pQuest->GetRepObjectiveFaction())
     {
@@ -5954,6 +5959,50 @@ bool ChatHandler::HandleMovespeedShowCommand(char* /*args*/)
     PSendSysMessage("%s speeds:", unit->GetName());
     PSendSysMessage("Walk speed %f, Run speed %f, Swim speed %f, Fly speed %f", unit->GetSpeed(MOVE_WALK), unit->GetSpeed(MOVE_RUN), unit->GetSpeed(MOVE_SWIM), unit->GetSpeed(MOVE_FLIGHT));
 
+    return true;
+}
+
+bool ChatHandler::HandleDebugMovement(char* args)
+{
+    Unit* unit = getSelectedUnit();
+    if (!unit)
+    {
+        SendSysMessage(LANG_SELECT_CHAR_OR_CREATURE);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    bool value;
+    if (!ExtractOnOff(&args, value))
+    {
+        SendSysMessage(LANG_USE_BOL);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    unit->SetDebuggingMovement(value);
+    PSendSysMessage("New value: %s", (value ? "true" : "false"));
+    return true;
+}
+
+bool ChatHandler::HandlePrintMovement(char* args)
+{
+    Creature* unit = getSelectedCreature();
+    if (!unit)
+    {
+        SendSysMessage(LANG_SELECT_CHAR_OR_CREATURE);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    MotionMaster* mm = unit->GetMotionMaster();
+    if (mm->top()->GetMovementGeneratorType() == CHASE_MOTION_TYPE)
+    {
+        ChaseMovementGenerator* chaseM = static_cast<ChaseMovementGenerator*>(mm->top());
+        auto data = chaseM->GetPrintout();
+        PSendSysMessage("%s", data.first.data());
+        sLog.outCustomLog("%s", data.second.data());
+    }
     return true;
 }
 
