@@ -1234,8 +1234,13 @@ void Map::SendRemoveTransports(Player* player) const
 void Map::LoadTransports()
 {
     uint32 mapId = GetId();
+    Team team = TEAM_NONE;
+    if (DungeonMap* dungeon = dynamic_cast<DungeonMap*>(this))
+        team = dungeon->GetInstanceTeam();
+
     for (TransportTemplate const* transportTemplate : sMapMgr.m_transportsByMap[mapId])
-        Transport::LoadTransport(*transportTemplate, this);
+        if (Transport::IsSpawnedByDefault(transportTemplate->entry, team))
+            Transport::LoadTransport(*transportTemplate, this);
 }
 
 inline void Map::setNGrid(NGridType* grid, uint32 x, uint32 y)
@@ -1687,9 +1692,6 @@ bool DungeonMap::Add(Player* player)
     m_unloadTimer = 0;
     m_resetAfterUnload = false;
     m_unloadWhenEmpty = false;
-
-    if (!m_team)
-        m_team = player->GetTeam();
 
     if (i_mapEntry->IsNonRaidDungeon() && GetDifficulty() == DUNGEON_DIFFICULTY_NORMAL)
         player->AddNewInstanceId(GetInstanceId());

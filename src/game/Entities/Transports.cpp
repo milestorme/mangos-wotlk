@@ -128,20 +128,27 @@ bool Transport::IsSpawnedByDefault(uint32 entry, Team team)
 {
     switch (entry)
     {
-        case 201834: // ICC zeppelin after gunship fight
+        case 201598:        // Halls of Reflection - alliance
+        case 201580:        // ICC raid - Skybreaker - alliance
+        case 201581:        // ICC raid - Orgrim's Hammer - alliance
+            if (team == HORDE)
+                return false;
+            break;
+        case 201599:        // Halls of Reflection - horde
+        case 201811:        // ICC Raid - Skybreaker - horde
+        case 201812:        // ICC Raid - Orgrim's Hammer - horde
+            if (team == ALLIANCE)
+                return false;
+            break;
+        case 201834:        // ICC zeppelin after gunship fight
             return false;
     }
+
     return true;
 }
 
-void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* map)
+void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* map, bool spawnOnDemand /*= false*/)
 {
-    Team team = TEAM_NONE;
-    if (DungeonMap* dungeon = dynamic_cast<DungeonMap*>(map))
-        team = dungeon->GetInstanceTeam();
-    if (!IsSpawnedByDefault(transportTemplate.entry, team))
-        return;
-
     Transport* t = new Transport(transportTemplate);
 
     t->SetPeriod(transportTemplate.pathTime);
@@ -168,6 +175,9 @@ void Transport::LoadTransport(TransportTemplate const& transportTemplate, Map* m
     map->AddTransport(t);
 
     t->SpawnPassengers();
+
+    if (spawnOnDemand)
+        t->UpdateForMap(map, true);
 }
 
 bool Transport::Create(uint32 guidlow, uint32 mapid, float x, float y, float z, float ang, uint8 animprogress, uint16 dynamicHighValue)
